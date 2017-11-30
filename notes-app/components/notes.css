@@ -1,0 +1,50 @@
+.note-component{
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100px;
+	height: 200px;
+	border: 1px dashed;
+	background: white;
+	box-sizing: border-box;
+	opacity: .3;
+	/* overflow: hidden; */
+}
+
+.note-component__header{
+	position: relative;
+	width: 100%;
+	height: 20px;
+	margin-left: 10px;
+	border: 1px dashed red;
+}
+
+.note-component__collapse-btn{
+	outline: none;
+	border: none;
+	width: 20px;
+	height: 20px;
+	position: absolute;
+	top: 0;
+	right: 0;
+	background: lightgreen;
+}
+
+.note-component__area{
+	position: relative;
+	margin-left: 30px;
+	width: 100px;
+	height: 180px;
+	resize: none;
+	box-sizing: border-box;
+	border: 1px dashed blue;
+}
+
+.note-component__resizer{
+	position: absolute;
+	width: 20px;
+	height: 20px;
+	bottom: 0;
+	right: 0;
+	border: 1px dashed red;
+}
