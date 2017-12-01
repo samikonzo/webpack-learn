@@ -5,10 +5,18 @@ var ReactDom = require('react-dom'),
 
 var noNameNoteCount = 0;
 
-[].forEach.call(document.querySelectorAll('.note'), note => {
-	var name = note.getAttribute('name') || ('note_' + noNameNoteCount++),
-		parameters = localStorage.getItem(name) || '';
-		
+[].forEach.call(document.querySelectorAll('.note'), (note, i) => {
+	var name = note.getAttribute('name') || ('note_' + noNameNoteCount++);
+	
+	/*
+	if(!i){
+		ReactDom.render(
+			<Notes name={name} elem={note} first="true" />,
+			note
+		)
+		return
+	}	*/
+
 	ReactDom.render(
 		<Notes name={name} elem={note}/>,
 		note
