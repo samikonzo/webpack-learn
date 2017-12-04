@@ -4,14 +4,13 @@ var React = require('react'),
 import css from './notes.css';	
 
 
+
 class Notes extends React.Component{
 	constructor(props){
 		super(props)
 
 		// save elem
 		this.elem = this.props.elem
-
-		//
 
 		// look in storage
 		var localProps = localStorage.getItem(this.props.name)
@@ -27,7 +26,7 @@ class Notes extends React.Component{
 				},
 				size: {
 					width: undefined,
-					heigth: undefined,
+					height: undefined,
 				},
 				collapse: true,
 			}
@@ -35,10 +34,15 @@ class Notes extends React.Component{
 
 		// create starting state
 		this.state = {
+			text: localProps.text,
 			name: this.props.name,
 			position: {
 				x: localProps.position.x,
 				y: localProps.position.y
+			},
+			size : {
+				width: localProps.size.width,
+				height: localProps.size.height,
 			},
 			collapse: localProps.collapse,
 			edit: false,
@@ -66,9 +70,15 @@ class Notes extends React.Component{
 
 		elements = this.elements;
 
+		//resizing if no startSize
+		if(this.state.size.width == undefined || this.state.size.height == undefined){
+			this.state.size.width = getComputedStyle(elements.wrapper).width
+			this.state.size.height = getComputedStyle(elements.wrapper).height
+		}
+
 		if(this.state.collapse){
 			collapseNote()
-			setTimeout(checkWindowSizeAndChangeNotePosition, 1000)
+			//setTimeout(checkWindowSizeAndChangeNotePosition, 1000)
 		} else {
 			checkWindowSizeAndChangeNotePosition()
 		}
@@ -96,7 +106,7 @@ class Notes extends React.Component{
 			}
 
 			if(target == elements.resizer){
-				l('resizer')
+				resizeNote(e)
 			}
 		})
 
@@ -121,6 +131,48 @@ class Notes extends React.Component{
 			}	
 		})
 
+		elements.textarea.addEventListener('focus', function(e){
+			var textarea = this;
+
+			textarea.addEventListener('keydown', textareaListenKeys);
+			textarea.addEventListener('blur', changeText)
+
+
+			function textareaListenKeys(e){
+				l('keydown')
+				const keyCode_esc = 27,
+					keyCode_enter = 13;	
+
+				if(e.keyCode == keyCode_enter){
+					//changeText()
+				} else if(e.keyCode == keyCode_esc){
+					returnText()
+				}	
+			}	
+
+			function changeText(){
+				if(textarea.value != that.state.text){
+					that.setState({
+						text: textarea.value
+					})
+				l(textarea.value)
+				}
+
+				endOfChanging();
+			}
+
+			function returnText(){
+				textarea.value = that.state.text
+
+				endOfChanging();
+			}
+
+			function endOfChanging(){
+				textarea.removeEventListener('keydown', textareaListenKeys);
+				textarea.removeEventListener('blur', changeText)
+			}
+		})
+
 		function dragNote(e){
 			var draged = false,
 				offset,
@@ -130,12 +182,12 @@ class Notes extends React.Component{
 				};
 			
 			document.body.addEventListener('mousemove', moveNote)
-			document.body.addEventListener('mouseup', removeListeners);
+			document.body.addEventListener('mouseup', removeListeners)
 
 			function moveNote(e){
 				if(!draged){
-					if( (Math.abs(e.clientX - startPosition.x) < 2) && 
-						(Math.abs(e.clientY - startPosition.y) < 2)){
+					if( (Math.abs(e.clientX - startPosition.x) < 0) && 
+						(Math.abs(e.clientY - startPosition.y) < 0)){
 						return
 					} else {
 						draged = true
@@ -146,6 +198,10 @@ class Notes extends React.Component{
 					}
 				
 				} 
+
+				if(that.state.savedPosition){
+					delete that.state.savedPosition
+				}
 
 				var resultPosition = {
 					x : e.clientX - offset.x, 
@@ -164,8 +220,42 @@ class Notes extends React.Component{
 
 			function removeListeners(){
 				document.body.removeEventListener('mousemove', moveNote)
-				document.body.removeEventListener('mouseup', removeListeners);
+				document.body.removeEventListener('mouseup', removeListeners)
 			}
+		}
+
+		function resizeNote(e){
+			var startPosition = {
+					x: e.clientX,
+					y: e.clientY,
+				},
+				startSize = {
+					width: parseFloat(getComputedStyle(elements.wrapper).width, 10),
+					height: parseFloat(getComputedStyle(elements.wrapper).height, 10),
+				};
+
+			document.addEventListener('mousemove', changeSizeNote)
+			document.addEventListener('mouseup', removeListeners)
+				
+			function changeSizeNote(e){
+				var differencePosition = {
+					x: e.clientX - startPosition.x,
+					y: e.clientY - startPosition.y
+				}
+
+				that.setState({
+					size: {
+						width: startSize.width + differencePosition.x,
+						height: startSize.height + differencePosition.y,
+					}
+				})
+			}
+
+			function removeListeners(){
+				document.removeEventListener('mousemove', changeSizeNote)
+				document.removeEventListener('mouseup', removeListeners)
+			}
+
 		}
 
 		function collapseNote(){
@@ -173,7 +263,17 @@ class Notes extends React.Component{
 
 			main.style.maxHeight = main.scrollHeight + 'px';
 			setTimeout(function(){
-				main.style.maxHeight = '0px'
+				
+				if(that.state.savedPosition != undefined){
+					changePosition(that.state.savedPosition.x, that.state.savedPosition.y, 1000)
+					setTimeout(function(){
+						main.style.maxHeight = '0px'
+					}, 100)
+
+				} else {
+
+					main.style.maxHeight = '0px'
+				}
 			},100)
 		}
 
@@ -182,26 +282,11 @@ class Notes extends React.Component{
 
 			//check note near bottom
 			checkWindowSizeAndChangeNotePosition()
-			/*if(document.documentElement.clientHeight - main.getBoundingClientRect().bottom < main.scrollHeight){
-				wrapper.style.transition = '1s';
-				var diffY = main.scrollHeight - (document.documentElement.clientHeight - main.getBoundingClientRect().bottom),
-					diffX = main.scrollWidth - (document.documentElement.clientWidth - main.getBoundingClientRect().right);
-				
-				that.setState(function(prevState, props){
-					return {
-						position: {
-							y: prevState.position.y - diffY,
-							x: prevState.position.x - diffX,
-						}
-					}
-				})
-
-				setTimeout(function(){
-					wrapper.style.transition = '';
-				}, 1000)
-			}*/
 
 			main.style.maxHeight = main.scrollHeight + 'px';
+			setTimeout(function(){
+				main.style.maxHeight = ''
+			}, 1000)
 		}
 
 		function checkWindowSizeAndNotePosition(x, y){
@@ -228,15 +313,17 @@ class Notes extends React.Component{
 				wrapper = that.elements.wrapper;
 
 			var diffX, diffY;
-			/*if(document.documentElement.clientHeight - main.getBoundingClientRect().top < main.scrollHeight){
+			if(document.documentElement.clientHeight - main.getBoundingClientRect().top < main.scrollHeight){
 				wrapper.style.transition = '1s';
 				var diffY = main.scrollHeight - (document.documentElement.clientHeight - main.getBoundingClientRect().top),
 					diffX = main.scrollWidth - (document.documentElement.clientWidth - main.getBoundingClientRect().right);
 				
-				l('diffX : ', diffX)
-
 				that.setState(function(prevState, props){
 					return {
+						savedPosition: {
+							y: prevState.position.y,
+							x: prevState.position.x,
+						},
 						position: {
 							y: prevState.position.y - diffY,
 							x: prevState.position.x //- diffX,
@@ -247,7 +334,24 @@ class Notes extends React.Component{
 				setTimeout(function(){
 					wrapper.style.transition = '';
 				}, 1000)
-			}*/
+			}
+		}
+
+		function changePosition(x,y, ms){
+			elements.wrapper.style.transition = ms/1000 + 's'
+
+			setTimeout(function(){
+				that.setState({
+					position:{
+						x: x,
+						y: y,
+					}
+				})
+
+				setTimeout(function(){
+					elements.wrapper.style.transition = ''
+				}, ms)
+			}, 100)
 		}
 
 	}
@@ -262,15 +366,18 @@ class Notes extends React.Component{
 		if(this.state.edit){
 			document.body.style.position = 'fixed'
 			document.body.style.overflowY = 'scroll'
+			document.body.style.userSelect = 'none'
 		} else {
 			document.body.style.position = ''
 			document.body.style.overflowY = ''
+			document.body.style.userSelect = ''
 		}
 
 		return (
 			<div className={componentClass} style={{
 				left: (this.state.position.x || 0) + 'px',
-				top: (this.state.position.y || 0) + 'px' 
+				top: (this.state.position.y || 0) + 'px',
+				
 			}}>
 				<div className="note-component__header" name={this.state.name}>
 					<button className="note-component__collapse-btn" />
@@ -278,7 +385,10 @@ class Notes extends React.Component{
 
 				<div className="note-component__main"> 
 
-					<textarea className="note-component__area">{this.state.text}</textarea>
+					<textarea className="note-component__area" defaultValue={this.state.text} style={{
+						width: this.state.size.width + 'px',
+						height: this.state.size.height + 'px',
+					}}/>
 					<div className="note-component__scroll-wrapper">
 						<div className="note-component__scroll"/>
 					</div>
@@ -289,6 +399,7 @@ class Notes extends React.Component{
 		)
 	}
 }	
+
 
 
 module.exports = Notes;
